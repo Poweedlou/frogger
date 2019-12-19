@@ -152,7 +152,7 @@ if __name__ == "__main__":
              pygame.K_a: (-1, 0),
              pygame.K_d: (1, 0)}
     chicken = Chicken('chicken')
-    field = Field(11, 20, 30, chicken)
+    field = Field(21, 10, 50, chicken)
     running = True
     field.frame(True)
     clock = time.Clock()
