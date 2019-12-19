@@ -4,6 +4,7 @@ import pygame.display
 import pygame.image as img
 import pygame.time as time
 from pygame.transform import rotate, flip
+from lines import GrassLine
 
 
 class Field:
@@ -18,6 +19,7 @@ class Field:
         self.seen_lines = 0
         self.playing = False
         self.cam_y = 0
+        self.ded = False
         self.ch_max_y = 4
         self.cam_y_real = 0
         x = width * cell_size
@@ -45,10 +47,18 @@ class Field:
                 new_lines.append(line)
             self.seen_lines = upper_border
             self.lines = new_lines
+            if self.ch_coords[1] < self.seen_lines - self.height and not self.ded:
+                self.u_ded()
             self.chicken.calc()
             self.render()
 
+    def u_ded(self):
+        self.chicken.die_lol()
+        self.ded = True # sad moment
+
     def move_chicken(self, dir_):
+        if self.ded:
+            return
         nx = self.ch_coords[0] + dir_[0]
         ny = self.ch_coords[1] + dir_[1]
         if 0 <= nx < self.width:
@@ -56,8 +66,8 @@ class Field:
             self.chicken.hop(dir_)
     
     def gen_line(self, y):
-        bg = Color(['white', 'blue'][y % 2])
-        return Line(y, bg, self.width, self.cell_size)
+        bg = Color('white')
+        return GrassLine(y, bg, self.width, self.cell_size)
 
     def render(self):
         shift = int(self.cam_y)
@@ -92,6 +102,7 @@ class Chicken(pygame.sprite.Sprite):
         self.sit_img = img.load('sprites/chicken/' + pic_path + '_sit.png')
         self.image = self.sit_img
         self.fly_img = img.load('sprites/chicken/' + pic_path + '_fly.png')
+        self.tomb_img = img.load('sprites/tomb.png')
         self.rect = self.image.get_rect()
         self.angle = 0
         self.flying = False
@@ -112,6 +123,9 @@ class Chicken(pygame.sprite.Sprite):
     def add_field(self, field):
         self.field = field
         self.rx, self.ry = field.ch_coords
+    
+    def die_lol(self):
+        self.image = self.tomb_img
     
     def calc(self):
         cell = self.field.cell_size
@@ -154,7 +168,7 @@ if __name__ == "__main__":
              pygame.K_a: (-1, 0),
              pygame.K_d: (1, 0)}
     chicken = Chicken('chicken')
-    field = Field(21, 10, 50, chicken)
+    field = Field(17, 13, 50, chicken)
     running = True
     field.frame(True)
     clock = time.Clock()
