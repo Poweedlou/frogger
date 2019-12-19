@@ -49,9 +49,11 @@ class Field:
             self.render()
 
     def move_chicken(self, dir_):
-        self.ch_coords[0] += dir_[0]
-        self.ch_coords[1] += dir_[1]
-        self.chicken.hop(dir_)
+        nx = self.ch_coords[0] + dir_[0]
+        ny = self.ch_coords[1] + dir_[1]
+        if 0 <= nx < self.width:
+            self.ch_coords = nx, ny
+            self.chicken.hop(dir_)
     
     def gen_line(self, y):
         bg = Color(['white', 'blue'][y % 2])
