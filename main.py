@@ -12,7 +12,7 @@ class Field:
         self.height = height
         self.cell_size = cell_size
         self.chicken = chicken
-        chicken.parent = self
+        self.ch_group = pygame.sprite.Group(chicken)
         self.ch_coords = [width // 2, 4]
         self.lines = []
         self.seen_lines = 0
@@ -25,7 +25,7 @@ class Field:
         self.screen = pygame.display.set_mode((x, y))
         self.screen2 = pygame.Surface((x, y + cell_size))
         self.screen_size = (x, y)
-
+        chicken.add_field(self)
 
     def frame(self, force=False):
         if self.playing or force:
@@ -45,22 +45,13 @@ class Field:
                 new_lines.append(line)
             self.seen_lines = upper_border
             self.lines = new_lines
+            self.chicken.calc()
             self.render()
 
     def move_chicken(self, dir_):
         self.ch_coords[0] += dir_[0]
         self.ch_coords[1] += dir_[1]
-        if dir_[0] == 0:
-            if dir_[1] > 0:
-                angle = 0
-            else:
-                angle = 180
-        elif dir_[0] > 0:
-            angle = 90
-        else:
-            angle = 270
-        self.chicken.turn(angle)
-        self.playing = True
+        self.chicken.hop(dir_)
     
     def gen_line(self, y):
         bg = Color(['white', 'blue'][y % 2])
@@ -75,7 +66,7 @@ class Field:
         ch_y -= shift
         ch_x *= self.cell_size
         ch_y *= self.cell_size
-        self.screen2.blit(self.chicken.sprite, (ch_x, ch_y))
+        self.ch_group.draw(self.screen2)
         foo = flip(self.screen2, False, True)
         y_blit = self.cell_size * (1 - self.cam_y + shift)
         blit_area = Rect((0, y_blit), self.screen_size)
@@ -93,14 +84,66 @@ class Line:
         return self.screen, self.y
 
 
-class Chicken:
+class Chicken(pygame.sprite.Sprite):
     def __init__(self, pic_path):
-        self.sprite = img.load('sprites/chicken/' + pic_path + '.png')
+        super().__init__()
+        self.sit_img = img.load('sprites/chicken/' + pic_path + '_sit.png')
+        self.image = self.sit_img
+        self.fly_img = img.load('sprites/chicken/' + pic_path + '_fly.png')
+        self.rect = self.image.get_rect()
         self.angle = 0
+        self.flying = False
+        self.flying_frames = 0
+
+    def fly_frame(self):
+        if not self.flying:
+            return
+        if self.flying_frames == 14:
+            self.flying_frames = 0
+            self.flying = False
+            self.image = rotate(self.sit_img, self.angle)
+            return
+        self.vx += self.dx
+        self.vy += self.dy
+        self.flying_frames += 1
+    
+    def add_field(self, field):
+        self.field = field
+        self.rx, self.ry = field.ch_coords
+    
+    def calc(self):
+        cell = self.field.cell_size
+        if self.flying:
+            self.fly_frame()
+            self.rect.x = self.vx * cell
+            self.rect.y = cell * (self.vy - self.field.seen_lines + self.field.height)
+        else:
+            self.rect.x = self.rx * cell
+            self.rect.y = cell * (self.ry - self.field.seen_lines + self.field.height)
     
     def turn(self, angle):
-        self.sprite = rotate(self.sprite, angle - self.angle)
+        self.image = rotate(self.image, angle - self.angle)
         self.angle = angle
+    
+    def hop(self, dir_):
+        self.flying = True
+        self.flying_frames = 0
+        self.vx, self.vy = self.rx, self.ry
+        self.dx, self.dy = dir_[0] / 15, dir_[1] / 15
+        self.rx += dir_[0]
+        self.ry += dir_[1]
+        if dir_[0] == 0:
+            if dir_[1] > 0:
+                angle = 0
+            else:
+                angle = 180
+        elif dir_[0] > 0:
+            angle = 90
+        else:
+            angle = 270
+        self.angle = angle
+        self.image = rotate(self.fly_img, angle)
+
 
 if __name__ == "__main__":
     fps = 60
@@ -119,6 +162,7 @@ if __name__ == "__main__":
                 running = False
             if event.type == pygame.KEYDOWN:
                 try:
+                    field.playing = True
                     field.move_chicken(moves[event.key])
                 except:
                     pass
