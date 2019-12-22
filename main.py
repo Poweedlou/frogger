@@ -4,19 +4,21 @@ import pygame.display
 import pygame.image as img
 import pygame.time as time
 from pygame.transform import rotate, flip
-from lines import GrassLine
+from lines import GrassLine, RoadLine
+from constants import *
+from random import choice, randint
+import sys
 
 
 class Field:
-    def __init__(self, width, height, cell_size, chicken):
-        self.width = width
-        self.height = height
-        self.cell_size = cell_size
+    def __init__(self, chicken):
         self.chicken = chicken
         self.ch_group = pygame.sprite.Group(chicken)
         self.ch_coords = [width // 2, 4]
+        self.all_group = pygame.sprite.Group()
+        self.cars_group = pygame.sprite.Group()
         self.lines = []
-        self.seen_lines = 0
+        self.seen_lines = -height
         self.playing = False
         self.cam_y = 0
         self.ded = False
@@ -32,7 +34,7 @@ class Field:
     def frame(self, force=False):
         if self.playing or force:
             y = self.ch_coords[1]
-            self.cam_y_real += 0.02
+            self.cam_y_real += 1 / fps
             if y > self.cam_y + 4:
                 self.cam_y += (y - self.cam_y - 4) * 0.05
             if self.cam_y_real > self.cam_y:
@@ -41,16 +43,27 @@ class Field:
             for line in self.lines:
                 if line.y > self.cam_y - 1:
                     new_lines.append(line)
-            upper_border = int(self.cam_y) + self.height + 1
-            for i in range(self.seen_lines, upper_border):
+            upper_border = int(self.cam_y) + 1
+            for i in range(self.seen_lines + height, upper_border + height):
                 line = self.gen_line(i)
                 new_lines.append(line)
+                self.all_group.update(True)
+                self.seen_lines += 1
             self.seen_lines = upper_border
             self.lines = new_lines
-            if self.ch_coords[1] < self.seen_lines - self.height and not self.ded:
+            if self.ch_coords[1] < self.seen_lines and not self.ded:
                 self.u_ded()
             self.chicken.calc()
+            self.all_group.update()
+            if self.check_ded():
+                self.u_ded()
             self.render()
+    
+    def check_ded(self):
+        if pygame.sprite.spritecollide(self.chicken, self.cars_group,
+                                       False, collided=pygame.sprite.collide_mask):
+            return True
+        return False
 
     def u_ded(self):
         self.chicken.die_lol()
@@ -61,39 +74,34 @@ class Field:
             return
         nx = self.ch_coords[0] + dir_[0]
         ny = self.ch_coords[1] + dir_[1]
-        if 0 <= nx < self.width:
+        if 0 <= nx < width:
             self.ch_coords = nx, ny
             self.chicken.hop(dir_)
     
     def gen_line(self, y):
-        bg = Color('white')
-        return GrassLine(y, bg, self.width, self.cell_size)
+        Foo = choice((GrassLine, RoadLine))
+        if Foo == RoadLine:
+            speed = choice((randint(1, 4), randint(-4, -1))) / 4
+            if speed < 0:
+                speed -= 1
+            else:
+                speed += 1
+            return Foo(y, self, dx=speed)
+        else:
+            return Foo(y, self)
+            
 
     def render(self):
         shift = int(self.cam_y)
-        lines = map(Line.render, self.lines)
-        lines = map(lambda x: (x[0], (0, (x[1] - shift) * self.cell_size)), lines)
+        lines = map(lambda x: x.render(), self.lines)
+        lines = map(lambda x: (x[0], (0, (x[1] - shift) * cell_size)), lines)
         self.screen2.blits(lines)
-        ch_x, ch_y = self.ch_coords
-        ch_y -= shift
-        ch_x *= self.cell_size
-        ch_y *= self.cell_size
         self.ch_group.draw(self.screen2)
+        self.all_group.draw(self.screen2)
         foo = flip(self.screen2, False, True)
-        y_blit = self.cell_size * (1 - self.cam_y + shift)
+        y_blit = cell_size * (1 - self.cam_y + shift)
         blit_area = Rect((0, y_blit), self.screen_size)
         self.screen.blit(foo, (0, 0), area=blit_area)
-
-
-class Line:
-    def __init__(self, y, color, width, cell_size):
-        self.y = y
-        size = (width * cell_size, cell_size)
-        self.screen = pygame.Surface(size)
-        self.screen.fill(color)
-    
-    def render(self):
-        return self.screen, self.y
 
 
 class Chicken(pygame.sprite.Sprite):
@@ -104,6 +112,7 @@ class Chicken(pygame.sprite.Sprite):
         self.fly_img = img.load('sprites/chicken/' + pic_path + '_fly.png')
         self.tomb_img = img.load('sprites/tomb.png')
         self.rect = self.image.get_rect()
+        self.mask = pygame.mask.from_surface(self.image)
         self.angle = 0
         self.flying = False
         self.flying_frames = 0
@@ -111,10 +120,11 @@ class Chicken(pygame.sprite.Sprite):
     def fly_frame(self):
         if not self.flying:
             return
-        if self.flying_frames == 14:
+        if self.flying_frames == fps // 4 - 1:
             self.flying_frames = 0
             self.flying = False
             self.image = rotate(self.sit_img, self.angle)
+            self.mask = pygame.mask.from_surface(self.image)
             return
         self.vx += self.dx
         self.vy += self.dy
@@ -122,20 +132,20 @@ class Chicken(pygame.sprite.Sprite):
     
     def add_field(self, field):
         self.field = field
-        self.rx, self.ry = field.ch_coords
+        self.rx, self.ry = self.field.ch_coords
     
     def die_lol(self):
         self.image = self.tomb_img
+        self.flying = False
     
     def calc(self):
-        cell = self.field.cell_size
         if self.flying:
             self.fly_frame()
-            self.rect.x = self.vx * cell
-            self.rect.y = cell * (self.vy - self.field.seen_lines + self.field.height)
+            self.rect.x = self.vx * cell_size
+            self.rect.y = cell_size * (self.vy - self.field.seen_lines)
         else:
-            self.rect.x = self.rx * cell
-            self.rect.y = cell * (self.ry - self.field.seen_lines + self.field.height)
+            self.rect.x = self.rx * cell_size
+            self.rect.y = cell_size * (self.ry - self.field.seen_lines)
     
     def turn(self, angle):
         self.image = rotate(self.image, angle - self.angle)
@@ -145,7 +155,7 @@ class Chicken(pygame.sprite.Sprite):
         self.flying = True
         self.flying_frames = 0
         self.vx, self.vy = self.rx, self.ry
-        self.dx, self.dy = dir_[0] / 15, dir_[1] / 15
+        self.dx, self.dy = dir_[0] * 4 / fps, dir_[1] * 4 / fps
         self.rx += dir_[0]
         self.ry += dir_[1]
         if dir_[0] == 0:
@@ -159,29 +169,30 @@ class Chicken(pygame.sprite.Sprite):
             angle = 270
         self.angle = angle
         self.image = rotate(self.fly_img, angle)
+        self.mask = pygame.mask.from_surface(self.image)
 
 
 if __name__ == "__main__":
-    fps = 60
     moves = {pygame.K_w: (0, 1),
              pygame.K_s: (0, -1),
              pygame.K_a: (-1, 0),
              pygame.K_d: (1, 0)}
     chicken = Chicken('chicken')
-    field = Field(17, 13, 50, chicken)
+    field = Field(chicken)
     running = True
     field.frame(True)
     clock = time.Clock()
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                sys.exit()
             if event.type == pygame.KEYDOWN:
                 try:
                     field.playing = True
                     field.move_chicken(moves[event.key])
                 except:
                     pass
-        clock.tick(fps)
+        bar = 1000 / clock.tick(fps)
+        #print(bar)
         field.frame()
         pygame.display.flip()
