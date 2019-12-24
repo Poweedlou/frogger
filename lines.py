@@ -30,12 +30,11 @@ class RoadLine(Line):
     def __init__(self, *args, dx=1):
         super().__init__(*args)
         self.block = pygame.image.load('sprites/lines/road_block.png')
-        self.cars = []
         for x in range(width):
             self.screen.blit(self.block, (cell_size * x, 0))
         self.dx = dx
         for i in range(width // 4):
-            x = choice(range(4)) + i * 4
+            x = choice(range(3)) + i * 4
             self.add_car(x)
 
     def add_car(self, x):
@@ -43,7 +42,6 @@ class RoadLine(Line):
         g2 = self.field.all_group
         car = Car(self.y - self.field.seen_lines + 1, x, self.dx)
         car.add(g1, g2)
-        self.cars.append(car)
 
 class Car(pygame.sprite.Sprite):
     def __init__(self, y, x, dx):
@@ -74,4 +72,48 @@ class Car(pygame.sprite.Sprite):
         self.rect.y = self.y * cell_size
         self.rect.y += self.dy
         self.dy = -self.dy
+        self.rect.x = int(self.x)
+
+
+class RiverLine(Line):
+    def __init__(self, *args, dx=1):
+        super().__init__(*args)
+        self.block = pygame.image.load('sprites/lines/river_block.png')
+        self.dx = dx
+        for x in range(width):
+            self.screen.blit(self.block, (cell_size * x, 0))
+        for i in range(width // 5):
+            x = choice(range(2)) + i * 5
+            self.add_tree(x)
+    
+    def add_tree(self, x):
+        g1 = self.field.tree_group
+        g2 = self.field.all_group
+        tree = Tree(self.y - self.field.seen_lines + 1, x, self.dx)
+        tree.add(g1, g2)
+
+
+class Tree(pygame.sprite.Sprite):
+    def __init__(self, y, x, dx):
+        super().__init__()
+        self.image = pygame.image.load('sprites/sprites/tree.png')
+        self.rect = self.image.get_rect()
+        self.mask = pygame.mask.from_surface(self.image)
+        self.y = y
+        self.dx = dx
+        self.x = x * cell_size
+
+    def update(self, y_shift=False):
+        if y_shift:
+            self.y -= 1
+            if self.y < 0:
+                self.kill()
+            return
+        self.x += self.dx
+        if self.dx > 0:
+            if self.x > width * cell_size:
+                self.x = -cell_size
+        elif self.x <= 0:
+            self.x = (width + 1) * cell_size
+        self.rect.y = self.y * cell_size
         self.rect.x = int(self.x)

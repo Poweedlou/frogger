@@ -4,7 +4,7 @@ import pygame.display
 import pygame.image as img
 import pygame.time as time
 from pygame.transform import rotate, flip
-from lines import GrassLine, RoadLine
+from lines import GrassLine, RoadLine, RiverLine
 from constants import *
 from random import choice, randint
 import sys
@@ -17,6 +17,7 @@ class Field:
         self.ch_coords = [width // 2, 4]
         self.all_group = pygame.sprite.Group()
         self.cars_group = pygame.sprite.Group()
+        self.tree_group = pygame.sprite.Group()
         self.lines = []
         self.seen_lines = -height
         self.playing = False
@@ -53,16 +54,23 @@ class Field:
             self.lines = new_lines
             if self.ch_coords[1] < self.seen_lines and not self.ded:
                 self.u_ded()
+            if self.on_tree() and not self.chicken.flying:
+                x = self.ch_coords[0] + self.on_tree()[0].dx / cell_size
+                y = self.ch_coords[1]
+                self.ch_coords = x, y
             self.chicken.calc()
             self.all_group.update()
             if self.check_ded():
                 self.u_ded()
             self.render()
-    
+
     def check_ded(self):
         if pygame.sprite.spritecollide(self.chicken, self.cars_group,
                                        False, collided=pygame.sprite.collide_mask):
             return True
+        if self.in_water():
+            if not self.on_tree() and not self.chicken.flying:
+                return True
         return False
 
     def u_ded(self):
@@ -72,16 +80,39 @@ class Field:
     def move_chicken(self, dir_):
         if self.ded:
             return
+        self.chicken.flying = False
+        self.chicken.calc()
+        adir = dir_[:]
+        dx = 0
         nx = self.ch_coords[0] + dir_[0]
+        if self.on_tree() and dir_[0]:
+            dx = self.on_tree()[0].dx
+            nx += dx / cell_size * (fps // 4 - 1)
         ny = self.ch_coords[1] + dir_[1]
+        if self.in_water():
+            if not self.on_tree():
+                self.u_ded()
+                return
         if 0 <= nx < width:
             self.ch_coords = nx, ny
-            self.chicken.hop(dir_)
-    
+            if dir_[0]:
+                dir_ = dir_[0] + dx / cell_size * (fps // 4 - 1), dir_[1]
+            self.chicken.hop(dir_, adir)
+
+    def in_water(self):
+        return isinstance(self.lines[self.ch_coords[1] - self.seen_lines], RiverLine)
+
+    def on_tree(self):
+        a = pygame.sprite.spritecollide(self.chicken, self.tree_group,
+                                        False, collided=pygame.sprite.collide_mask)
+        return a
+
     def gen_line(self, y):
-        Foo = choice((GrassLine, RoadLine))
-        if Foo == RoadLine:
-            speed = choice((randint(1, 4), randint(-4, -1))) / 4
+        if -self.seen_lines > height - 5:
+            return GrassLine(y,self)
+        Foo = choice((GrassLine, RoadLine, RiverLine))
+        if Foo in (RoadLine, RiverLine):
+            speed = choice((randint(1, 4), randint(-4, -1))) / 6
             if speed < 0:
                 speed -= 1
             else:
@@ -89,15 +120,14 @@ class Field:
             return Foo(y, self, dx=speed)
         else:
             return Foo(y, self)
-            
 
     def render(self):
         shift = int(self.cam_y)
         lines = map(lambda x: x.render(), self.lines)
         lines = map(lambda x: (x[0], (0, (x[1] - shift) * cell_size)), lines)
         self.screen2.blits(lines)
-        self.ch_group.draw(self.screen2)
         self.all_group.draw(self.screen2)
+        self.ch_group.draw(self.screen2)
         foo = flip(self.screen2, False, True)
         y_blit = cell_size * (1 - self.cam_y + shift)
         blit_area = Rect((0, y_blit), self.screen_size)
@@ -129,41 +159,42 @@ class Chicken(pygame.sprite.Sprite):
         self.vx += self.dx
         self.vy += self.dy
         self.flying_frames += 1
-    
+
     def add_field(self, field):
         self.field = field
         self.rx, self.ry = self.field.ch_coords
-    
+
     def die_lol(self):
         self.image = self.tomb_img
         self.flying = False
-    
+
     def calc(self):
         if self.flying:
             self.fly_frame()
             self.rect.x = self.vx * cell_size
             self.rect.y = cell_size * (self.vy - self.field.seen_lines)
         else:
+            self.rx, self.ry = self.field.ch_coords
             self.rect.x = self.rx * cell_size
             self.rect.y = cell_size * (self.ry - self.field.seen_lines)
-    
+
     def turn(self, angle):
         self.image = rotate(self.image, angle - self.angle)
         self.angle = angle
-    
-    def hop(self, dir_):
+
+    def hop(self, dir_, angle_dir):
         self.flying = True
         self.flying_frames = 0
         self.vx, self.vy = self.rx, self.ry
         self.dx, self.dy = dir_[0] * 4 / fps, dir_[1] * 4 / fps
         self.rx += dir_[0]
         self.ry += dir_[1]
-        if dir_[0] == 0:
-            if dir_[1] > 0:
+        if angle_dir[0] == 0:
+            if angle_dir[1] > 0:
                 angle = 0
             else:
                 angle = 180
-        elif dir_[0] > 0:
+        elif angle_dir[0] > 0:
             angle = 90
         else:
             angle = 270
