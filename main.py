@@ -130,7 +130,7 @@ class Field:
         self.ch_group.draw(self.screen2)
         foo = flip(self.screen2, False, True)
         y_blit = cell_size * (1 - self.cam_y + shift)
-        blit_area = Rect((0, y_blit), self.screen_size)
+        blit_area = Rect((0, int(y_blit)), self.screen_size)
         self.screen.blit(foo, (0, 0), area=blit_area)
 
 
@@ -171,12 +171,12 @@ class Chicken(pygame.sprite.Sprite):
     def calc(self):
         if self.flying:
             self.fly_frame()
-            self.rect.x = self.vx * cell_size
-            self.rect.y = cell_size * (self.vy - self.field.seen_lines)
+            self.rect.x = int(self.vx * cell_size)
+            self.rect.y = int(cell_size * (self.vy - self.field.seen_lines))
         else:
             self.rx, self.ry = self.field.ch_coords
-            self.rect.x = self.rx * cell_size
-            self.rect.y = cell_size * (self.ry - self.field.seen_lines)
+            self.rect.x = int(self.rx * cell_size)
+            self.rect.y = int(cell_size * (self.ry - self.field.seen_lines))
 
     def turn(self, angle):
         self.image = rotate(self.image, angle - self.angle)
