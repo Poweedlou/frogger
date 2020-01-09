@@ -13,6 +13,7 @@ import sys
 class Field:
     def __init__(self, chicken):
         self.chicken = chicken
+        self.line_plan = (4, GrassLine)
         self.ch_group = pygame.sprite.Group(chicken)
         self.ch_coords = [width // 2 + 1, 4]
         self.all_group = pygame.sprite.Group()
@@ -118,9 +119,18 @@ class Field:
         return a
 
     def gen_line(self, y):
-        if -self.seen_lines > height - 5:
-            return GrassLine(y,self)
-        Foo = choice((GrassLine, RoadLine, RiverLine, TrainLine))
+        Foo = self.line_plan[1]
+        if self.line_plan[0] == 1:
+            ch = set((GrassLine, RoadLine, RiverLine, TrainLine))
+            ch.discard(Foo)
+            Bar = choice(list(ch))
+            if Bar == TrainLine:
+                len_ = 1
+            else:
+                len_ = randint(2, 4)
+            self.line_plan = len_, Bar
+        else:
+            self.line_plan = self.line_plan[0] - 1, Foo
         if Foo in (RoadLine, RiverLine):
             speed = choice((randint(1, 4), randint(-4, -1))) / 6
             if speed < 0:
