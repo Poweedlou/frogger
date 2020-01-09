@@ -4,7 +4,7 @@ import pygame.display
 import pygame.image as img
 import pygame.time as time
 from pygame.transform import rotate, flip
-from lines import GrassLine, RoadLine, RiverLine
+from lines import GrassLine, RoadLine, RiverLine, TrainLine
 from constants import *
 from random import choice, randint
 import sys
@@ -14,10 +14,12 @@ class Field:
     def __init__(self, chicken):
         self.chicken = chicken
         self.ch_group = pygame.sprite.Group(chicken)
-        self.ch_coords = [width // 2, 4]
+        self.ch_coords = [width // 2 + 1, 4]
         self.all_group = pygame.sprite.Group()
         self.cars_group = pygame.sprite.Group()
         self.tree_group = pygame.sprite.Group()
+        self.train_group = pygame.sprite.Group()
+        self.train_lines = []
         self.lines = []
         self.seen_lines = -height
         self.playing = False
@@ -27,9 +29,9 @@ class Field:
         self.cam_y_real = 0
         x = width * cell_size
         y = height * cell_size
-        self.screen = pygame.display.set_mode((x, y))
+        self.screen = pygame.display.set_mode((x - 3 * cell_size, y))
         self.screen2 = pygame.Surface((x, y + cell_size))
-        self.screen_size = (x, y)
+        self.screen_size = (x - 3 * cell_size, y)
         chicken.add_field(self)
 
     def frame(self, force=False):
@@ -44,6 +46,8 @@ class Field:
             for line in self.lines:
                 if line.y > self.cam_y - 1:
                     new_lines.append(line)
+                elif line in self.train_lines:
+                    self.train_lines.pop(self.train_lines.index(line))
             upper_border = int(self.cam_y) + 1
             for i in range(self.seen_lines + height, upper_border + height):
                 line = self.gen_line(i)
@@ -54,10 +58,12 @@ class Field:
             self.lines = new_lines
             if self.ch_coords[1] < self.seen_lines and not self.ded:
                 self.u_ded()
-            if self.on_tree() and not self.chicken.flying:
+            if self.on_tree() and not self.chicken.flying and not self.ded:
                 x = self.ch_coords[0] + self.on_tree()[0].dx / cell_size
                 y = self.ch_coords[1]
                 self.ch_coords = x, y
+            for tl in self.train_lines:
+                tl.frame()
             self.chicken.calc()
             self.all_group.update()
             if self.check_ded():
@@ -71,6 +77,11 @@ class Field:
         if self.in_water():
             if not self.on_tree() and not self.chicken.flying:
                 return True
+        if not (2.1 < self.chicken.rect.x / cell_size < width - 0.1):
+            return True
+        if pygame.sprite.spritecollide(self.chicken, self.train_group,
+                                       False, collided=pygame.sprite.collide_mask):
+            return True
         return False
 
     def u_ded(self):
@@ -93,11 +104,10 @@ class Field:
             if not self.on_tree():
                 self.u_ded()
                 return
-        if 0 <= nx < width:
-            self.ch_coords = nx, ny
-            if dir_[0]:
-                dir_ = dir_[0] + dx / cell_size * (fps // 4 - 1), dir_[1]
-            self.chicken.hop(dir_, adir)
+        self.ch_coords = nx, ny
+        if dir_[0]:
+            dir_ = dir_[0] + dx / cell_size * (fps // 4 - 1), dir_[1]
+        self.chicken.hop(dir_, adir)
 
     def in_water(self):
         return isinstance(self.lines[self.ch_coords[1] - self.seen_lines], RiverLine)
@@ -110,7 +120,7 @@ class Field:
     def gen_line(self, y):
         if -self.seen_lines > height - 5:
             return GrassLine(y,self)
-        Foo = choice((GrassLine, RoadLine, RiverLine))
+        Foo = choice((GrassLine, RoadLine, RiverLine, TrainLine))
         if Foo in (RoadLine, RiverLine):
             speed = choice((randint(1, 4), randint(-4, -1))) / 6
             if speed < 0:
@@ -118,6 +128,11 @@ class Field:
             else:
                 speed += 1
             return Foo(y, self, dx=speed)
+        elif Foo == TrainLine:
+            speed = choice((-30, 30))
+            line = Foo(y, self, dx=speed)
+            self.train_lines.append(line)
+            return line
         else:
             return Foo(y, self)
 
@@ -130,7 +145,7 @@ class Field:
         self.ch_group.draw(self.screen2)
         foo = flip(self.screen2, False, True)
         y_blit = cell_size * (1 - self.cam_y + shift)
-        blit_area = Rect((0, int(y_blit)), self.screen_size)
+        blit_area = Rect((3 * cell_size, int(y_blit)), self.screen_size)
         self.screen.blit(foo, (0, 0), area=blit_area)
 
 

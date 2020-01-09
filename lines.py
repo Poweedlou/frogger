@@ -117,3 +117,100 @@ class Tree(pygame.sprite.Sprite):
             self.x = (width + 1) * cell_size
         self.rect.y = self.y * cell_size
         self.rect.x = int(self.x)
+
+
+class TrainLine(Line):
+    def __init__(self, *args, dx=10):
+        super().__init__(*args)
+        self.block = pygame.image.load('sprites/lines/railway_block.png')
+        for x in range(width):
+            self.screen.blit(self.block, (cell_size * x, 0))
+        self.dx = dx
+        self.train_exists = False
+        self.ttl = choice(range(2, 5)) * fps
+        self.draw_semafor('green')
+
+    def draw_semafor(self, color):
+        self.screen.blit(pygame.image.load('sprites/lines/semafor.png'), (3 * cell_size, 0))
+        pygame.draw.circle(self.screen, pygame.Color(color),
+                           (3 * cell_size + 10, 31),
+                           cell_size // 8)
+
+    def frame(self):
+        if not self.train_exists:
+            self.ttl -= 1
+            if self.ttl < fps and not self.ttl % (fps // 5):
+                if self.ttl // (fps // 5) % 2:
+                    self.draw_semafor('white')
+                else:
+                    self.draw_semafor('red')
+            elif self.ttl >= fps:
+                self.draw_semafor('green')
+            if not self.ttl:
+                self.add_train()
+                self.ttl = choice(range(2, 5)) * fps
+
+    def add_train(self):
+        g1 = self.field.train_group
+        g2 = self.field.all_group
+        train = Train(self.dx, self.y - self.field.seen_lines + 1, self)
+        for vagon in train.train_arr:
+            vagon.add(g1, g2)
+        self.train = train
+        self.train_exists = True
+
+
+class Vagon(pygame.sprite.Sprite):
+    def __init__(self, dx, img, x, y):
+        super().__init__()
+        self.line = None
+        self.image = img
+        self.rect = self.image.get_rect()
+        self.mask = pygame.mask.from_surface(self.image)
+        self.rect.y = y * cell_size
+        self.y = y
+        self.dx = dx
+        self.x = x * cell_size
+
+    def update(self, y_shift=False):
+        if y_shift:
+            self.y -= 1
+            if self.y < 0:
+                self.kill()
+            else:
+                self.rect.y -= cell_size
+            return
+        self.x += self.dx
+        self.rect.x = int(self.x)
+        if self.dx > 0:
+            if self.rect.x >= width * cell_size:
+                self.kill()
+                if self.line is not None:
+                    self.line.train_exists = False
+                    self.line.train = None
+        elif self.rect.x <= 0:
+            self.kill()
+            if self.line is not None:
+                self.line.train_exists = False
+                self.line.train = None
+
+
+class Train:
+    def __init__(self, dx, y, line):
+        self.line = line
+        self.dx = dx
+        head_img = pygame.image.load('sprites\\sprites\\head_vagon.png')
+        mid_img = pygame.image.load('sprites\\sprites\\mid_vagon.png')
+        if dx < 0:
+            x_cs = list(range(width, width + 10, 3))
+        else:
+            x_cs = list(range(-9, 1, 3))
+        p1 = Vagon(dx, head_img, x_cs[0], y)
+        p2 = Vagon(dx, mid_img, x_cs[1], y)
+        p3 = Vagon(dx, mid_img, x_cs[2], y)
+        p4 = Vagon(dx, pygame.transform.flip(head_img, True, False), x_cs[3], y)
+        if dx < 0:
+            p4.line = line
+        else:
+            p1.line = line
+        self.train_arr = (p1, p2, p3, p4)
