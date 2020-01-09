@@ -10,6 +10,9 @@ from random import choice, randint
 import sys
 
 
+pygame.font.init()
+
+
 class Field:
     def __init__(self, chicken):
         self.chicken = chicken
@@ -127,7 +130,7 @@ class Field:
             if Bar == TrainLine:
                 len_ = 1
             else:
-                len_ = randint(2, 4)
+                len_ = randint(2, 3)
             self.line_plan = len_, Bar
         else:
             self.line_plan = self.line_plan[0] - 1, Foo
@@ -157,6 +160,11 @@ class Field:
         y_blit = cell_size * (1 - self.cam_y + shift)
         blit_area = Rect((3 * cell_size, int(y_blit)), self.screen_size)
         self.screen.blit(foo, (0, 0), area=blit_area)
+    
+    def print_fps(self, fps):
+        font = pygame.font.Font(None, 50)
+        text = font.render(str(int(fps)), 1, (37, 40, 80))
+        self.screen.blit(text, ((width - 4) * cell_size, 0))
 
 
 class Chicken(pygame.sprite.Sprite):
@@ -228,27 +236,38 @@ class Chicken(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
 
+def game_pack(ch_name):
+    chicken = Chicken(ch_name)
+    field = Field(chicken)
+    field.frame(True)
+    return chicken, field
+
+
 if __name__ == "__main__":
     moves = {pygame.K_w: (0, 1),
              pygame.K_s: (0, -1),
              pygame.K_a: (-1, 0),
              pygame.K_d: (1, 0)}
-    chicken = Chicken('chicken')
-    field = Field(chicken)
     running = True
-    field.frame(True)
+    chicken, field = game_pack("chicken")
     clock = time.Clock()
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit()
             if event.type == pygame.KEYDOWN:
-                try:
-                    field.playing = True
-                    field.move_chicken(moves[event.key])
-                except:
-                    pass
+                if event.key == pygame.K_r:
+                    del chicken
+                    del field
+                    chicken, field = game_pack("chicken")
+                else:
+                    try:
+                        field.playing = True
+                        field.move_chicken(moves[event.key])
+                    except:
+                        field.playing = False
         bar = 1000 / clock.tick(fps)
-        #print(bar)
         field.frame()
+        if field.playing:
+            field.print_fps(bar)
         pygame.display.flip()
