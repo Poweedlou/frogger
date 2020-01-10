@@ -1,5 +1,5 @@
 import pygame
-from random import choice
+from random import choice, randint
 from constants import *
 
 
@@ -214,3 +214,33 @@ class Train:
         else:
             p1.line = line
         self.train_arr = (p1, p2, p3, p4)
+
+
+class TrapLine(Line):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.block = pygame.image.load('sprites/lines/grass_block.png')
+        for x in range(width):
+            self.screen.blit(self.block, (cell_size * x, 0))
+        dx = randint(0, 3)
+
+        for x in range(3, width - 3, 4):
+            trap = 
+
+class Trap(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__()
+        self.image = pygame.image.load('sprites/spites/trap.png')
+        self.mask = pygame.mask.from_surface(self.image)
+        self.rect = self.image.get_rect()
+        self.rect.y = y * cell_size
+        self.rect.x = x * cell_size
+    
+    def update(self, y_shift=False):
+        if y_shift:
+            self.rect.y -= cell_size
+            if self.rect.y <= 0:
+                self.kill()
+    
+    def catch(self):
+        self.image
