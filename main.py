@@ -4,9 +4,10 @@ import pygame.display
 import pygame.image as img
 import pygame.time as time
 from pygame.transform import rotate, flip
-from lines import GrassLine, RoadLine, RiverLine, TrainLine
+from lines import GrassLine, RoadLine, RiverLine, TrainLine, TrapLine
 from constants import *
 from random import choice, randint
+from math import sin, pi
 import sys
 
 
@@ -21,6 +22,7 @@ class Field:
         self.ch_coords = [width // 2 + 1, 4]
         self.all_group = pygame.sprite.Group()
         self.cars_group = pygame.sprite.Group()
+        self.trap_group = pygame.sprite.Group()
         self.tree_group = pygame.sprite.Group()
         self.train_group = pygame.sprite.Group()
         self.train_lines = []
@@ -70,26 +72,32 @@ class Field:
                 tl.frame()
             self.chicken.calc()
             self.all_group.update()
-            if self.check_ded():
-                self.u_ded()
+            self.check_ded()
             self.render()
 
     def check_ded(self):
-        if pygame.sprite.spritecollide(self.chicken, self.cars_group,
-                                       False, collided=pygame.sprite.collide_mask):
-            return True
+        a = pygame.sprite.spritecollide(self.chicken, self.cars_group,
+                                        False, collided=pygame.sprite.collide_mask)
+        if a:
+            self.u_ded(a[0].dx)
         if self.in_water():
             if not self.on_tree() and not self.chicken.flying:
-                return True
+                self.u_ded()
         if not (2.1 < self.chicken.rect.x / cell_size < width - 0.1):
-            return True
-        if pygame.sprite.spritecollide(self.chicken, self.train_group,
-                                       False, collided=pygame.sprite.collide_mask):
-            return True
-        return False
+            self.u_ded()
+        a = pygame.sprite.spritecollide(self.chicken, self.train_group,
+                                        False, collided=pygame.sprite.collide_mask)
+        if a:
+            self.u_ded(a[0].dx / 2)
+        a = pygame.sprite.spritecollide(self.chicken, self.trap_group,
+                                        False, collided=pygame.sprite.collide_mask)
+        if a:
+            if not self.ded:
+                a[0].catch()
+            self.u_ded()
 
-    def u_ded(self):
-        self.chicken.die_lol()
+    def u_ded(self, dir_=1):
+        self.chicken.die_lol(dir_)
         self.ded = True # sad moment
 
     def move_chicken(self, dir_):
@@ -124,10 +132,10 @@ class Field:
     def gen_line(self, y):
         Foo = self.line_plan[1]
         if self.line_plan[0] == 1:
-            ch = set((GrassLine, RoadLine, RiverLine, TrainLine))
+            ch = set((GrassLine, RoadLine, RiverLine, TrainLine, TrapLine))
             ch.discard(Foo)
             Bar = choice(list(ch))
-            if Bar == TrainLine:
+            if Bar in (TrainLine, TrapLine):
                 len_ = 1
             else:
                 len_ = randint(2, 3)
@@ -170,6 +178,8 @@ class Field:
 class Chicken(pygame.sprite.Sprite):
     def __init__(self, pic_path):
         super().__init__()
+        self.ded = 0
+        self.dedtime = 0
         self.sit_img = img.load('sprites/chicken/' + pic_path + '_sit.png')
         self.image = self.sit_img
         self.fly_img = img.load('sprites/chicken/' + pic_path + '_fly.png')
@@ -197,11 +207,25 @@ class Chicken(pygame.sprite.Sprite):
         self.field = field
         self.rx, self.ry = self.field.ch_coords
 
-    def die_lol(self):
-        self.image = self.tomb_img
-        self.flying = False
+    def die_lol(self, dir_=1):
+        if not self.ded:
+            self.image = self.tomb_img
+            self.flying = False
+            self.ded = dir_
 
     def calc(self):
+        if self.ded:
+            if self.dedtime == 0:
+                self.ded_pos_y = self.ry
+                self.vy = self.ry
+                self.vx = self.rx
+            if self.dedtime < fps / 2:
+                self.dedtime += 1
+                self.vx += self.ded * 1.5 / cell_size
+                self.vy = self.ded_pos_y + sin(self.dedtime * pi * 2 / fps) / 1.5
+            self.rect.x = int(self.vx * cell_size)
+            self.rect.y = int(cell_size * (self.vy - self.field.seen_lines))
+            return
         if self.flying:
             self.fly_frame()
             self.rect.x = int(self.vx * cell_size)

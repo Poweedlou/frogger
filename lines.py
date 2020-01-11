@@ -223,24 +223,35 @@ class TrapLine(Line):
         for x in range(width):
             self.screen.blit(self.block, (cell_size * x, 0))
         dx = randint(0, 3)
-
+        g1 = self.field.all_group
+        g2 = self.field.trap_group
         for x in range(3, width - 3, 4):
-            trap = 
+            trap = Trap(x, self.y - self.field.seen_lines + 1)
+            trap.add(g1, g2)
+
 
 class Trap(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
-        self.image = pygame.image.load('sprites/spites/trap.png')
+        self.image = pygame.image.load('sprites/sprites/trap1.png')
         self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_rect()
         self.rect.y = y * cell_size
         self.rect.x = x * cell_size
+        self.caught = -1
     
     def update(self, y_shift=False):
         if y_shift:
             self.rect.y -= cell_size
-            if self.rect.y <= 0:
+            if self.rect.y < 0:
                 self.kill()
+        if self.caught > 0:
+            self.caught = self.caught - 1
+        elif not self.caught:
+            self.caught = -1
+            self.image = pygame.image.load('sprites/sprites/trap3.png')
+        
     
     def catch(self):
-        self.image
+        self.caught = fps // 26
+        self.image = pygame.image.load('sprites/sprites/trap2.png')
