@@ -225,11 +225,11 @@ class TrapLine(Line):
         self.block = pygame.image.load('sprites/lines/grass_block.png')
         for x in range(width):
             self.screen.blit(self.block, (cell_size * x, 0))
-        dx = randint(0, 3)
         g1 = self.field.all_group
         g2 = self.field.trap_group
         for x in range(3, width - 3, 4):
-            trap = Trap(x, self.y - self.field.seen_lines + 1)
+            dx = randint(-2, 2)
+            trap = Trap(x + 2 + dx, self.y - self.field.seen_lines + 1)
             trap.add(g1, g2)
 
 
@@ -256,5 +256,5 @@ class Trap(pygame.sprite.Sprite):
         
     
     def catch(self):
-        self.caught = fps // 26
+        self.caught = fps // 10
         self.image = pygame.image.load('sprites/sprites/trap2.png')

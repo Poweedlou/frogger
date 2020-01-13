@@ -9,6 +9,7 @@ from constants import *
 from random import choice, randint
 from math import sin, pi
 import sys
+from score_printer import add_score
 
 
 pygame.font.init()
@@ -36,7 +37,7 @@ class Field:
         self.playing = False
         self.cam_y = 0
         self.ded = False
-        self.ch_max_y = 4
+        self.ch_max_y = 0
         self.cam_y_real = 0
         x = width * cell_size
         y = height * cell_size
@@ -50,7 +51,7 @@ class Field:
             y = self.ch_coords[1]
             self.cam_y_real += 1 / fps
             if y > self.cam_y + 4:
-                self.cam_y += (y - self.cam_y - 4) * 0.05
+                self.cam_y += (y - self.cam_y - 4) * 0.03
             if self.cam_y_real > self.cam_y:
                 self.cam_y = self.cam_y_real
             new_lines = []
@@ -78,6 +79,9 @@ class Field:
             self.chicken.calc()
             self.all_group.update()
             self.check_ded()
+            y = int(self.ch_coords[1])
+            if self.ch_max_y < y:
+                self.ch_max_y = y
             self.render()
 
     def check_ded(self):
@@ -89,7 +93,7 @@ class Field:
             s = pygame.mixer.Sound('sprites/sounds/car_hit.wav')
             s.set_volume(0.2)
             s.play()
-            self.u_ded(a[0].dx)
+            self.u_ded(2 if a[0].dx > 0 else -2)
         if self.in_water():
             if not self.on_tree() and not self.chicken.flying:
                 s = pygame.mixer.Sound('sprites/sounds/splash.wav')
@@ -167,9 +171,10 @@ class Field:
                 speed -= 1
             else:
                 speed += 1
+            speed = speed * 100 // fps
             return Foo(y, self, dx=speed)
         elif Foo == TrainLine:
-            speed = choice((-30, 30))
+            speed = choice((-30, 30)) * 100 // fps
             line = Foo(y, self, dx=speed)
             self.train_lines.append(line)
             return line
@@ -187,10 +192,16 @@ class Field:
         y_blit = cell_size * (1 - self.cam_y + shift)
         blit_area = Rect((3 * cell_size, int(y_blit)), self.screen_size)
         self.screen.blit(foo, (0, 0), area=blit_area)
-    
+        self.print_score()
+
+    def print_score(self):
+        font = pygame.font.Font(None, 50)
+        text = font.render(str(self.ch_max_y), 1, (200, 0, 100))
+        self.screen.blit(text, ((width // 2 - 2) * cell_size, 0))
+
     def print_fps(self, fps):
         font = pygame.font.Font(None, 50)
-        text = font.render(str(int(fps)), 1, (37, 40, 80))
+        text = font.render(str(int(fps)), 1, (200, 0, 100))
         self.screen.blit(text, ((width - 4) * cell_size, 0))
 
 
@@ -231,6 +242,7 @@ class Chicken(pygame.sprite.Sprite):
             self.image = self.tomb_img
             self.flying = False
             self.ded = dir_
+            add_score(self.ch_max_y)
 
     def calc(self):
         if self.ded:
@@ -308,10 +320,12 @@ if __name__ == "__main__":
                     chicken, field = game_pack("chicken")
                 else:
                     try:
+                        d = moves[event.key]
                         field.playing = True
-                        field.move_chicken(moves[event.key])
+                        field.move_chicken(d)
                     except:
-                        field.playing = False
+                        if event.key == pygame.K_p:
+                            field.playing = not field.playing
         bar = 1000 / clock.tick(fps)
         field.frame()
         if field.playing:
