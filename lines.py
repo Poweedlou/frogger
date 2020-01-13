@@ -154,6 +154,9 @@ class TrainLine(Line):
         g1 = self.field.train_group
         g2 = self.field.all_group
         train = Train(self.dx, self.y - self.field.seen_lines + 1, self)
+        s = pygame.mixer.Sound('sprites/sounds/horn.wav')
+        s.set_volume(0.2)
+        s.play()
         for vagon in train.train_arr:
             vagon.add(g1, g2)
         self.train = train

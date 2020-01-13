@@ -16,6 +16,7 @@ pygame.mixer.init(frequency=48000, channels=6)
 bg_music = pygame.mixer.Sound('sprites/sounds/bg.wav')
 bg_music.set_volume(0.2)
 bg_music.play(loops=-1)
+pygame.mixer.set_reserved(1)
 
 
 class Field:
@@ -80,24 +81,38 @@ class Field:
             self.render()
 
     def check_ded(self):
+        if self.ded:
+            return
         a = pygame.sprite.spritecollide(self.chicken, self.cars_group,
                                         False, collided=pygame.sprite.collide_mask)
         if a:
+            s = pygame.mixer.Sound('sprites/sounds/car_hit.wav')
+            s.set_volume(0.2)
+            s.play()
             self.u_ded(a[0].dx)
         if self.in_water():
             if not self.on_tree() and not self.chicken.flying:
+                s = pygame.mixer.Sound('sprites/sounds/splash.wav')
+                s.set_volume(0.2)
+                s.play()
                 self.u_ded()
         if not (2.1 < self.chicken.rect.x / cell_size < width - 0.1):
             self.u_ded()
         a = pygame.sprite.spritecollide(self.chicken, self.train_group,
                                         False, collided=pygame.sprite.collide_mask)
         if a:
+            s = pygame.mixer.Sound('sprites/sounds/train_hit.wav')
+            s.set_volume(0.4)
+            s.play()
             self.u_ded(a[0].dx / 2)
         a = pygame.sprite.spritecollide(self.chicken, self.trap_group,
                                         False, collided=pygame.sprite.collide_mask)
         if a:
             if not self.ded:
                 a[0].catch()
+            s = pygame.mixer.Sound('sprites/sounds/trap_hit.wav')
+            s.set_volume(0.2)
+            s.play()
             self.u_ded()
 
     def u_ded(self, dir_=1):
@@ -244,6 +259,9 @@ class Chicken(pygame.sprite.Sprite):
         self.angle = angle
 
     def hop(self, dir_, angle_dir):
+        s = pygame.mixer.Sound('sprites/sounds/jump.wav')
+        s.set_volume(0.05)
+        s.play()
         self.flying = True
         self.flying_frames = 0
         self.vx, self.vy = self.rx, self.ry
