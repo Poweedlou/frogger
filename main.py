@@ -13,7 +13,8 @@ import sys
 
 pygame.font.init()
 pygame.mixer.init(frequency=48000, channels=6)
-bg_music = pygame.mixer.Sound('sprites/sounds/bg.mp3')
+bg_music = pygame.mixer.Sound('sprites/sounds/bg.wav')
+bg_music.set_volume(0.2)
 bg_music.play(loops=-1)
 
 
