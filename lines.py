@@ -10,6 +10,7 @@ tree = pygame.image.load('sprites/sprites/tree.png')
 head_img = pygame.image.load('sprites\\sprites\\head_vagon.png')
 mid_img = pygame.image.load('sprites\\sprites\\mid_vagon.png')
 semafor = pygame.image.load('sprites/lines/semafor.png')
+particle_icon = pygame.image.load('sprites/ded_particle.png')
 #====================
 grass_block = pygame.image.load('sprites/lines/grass_block.png')
 road_block = pygame.image.load('sprites/lines/road_block.png')
@@ -284,3 +285,35 @@ class Trap(pygame.sprite.Sprite):
         '''Начинает анимацию схлапывания'''
         self.caught = fps // 10
         self.image = traps[1]
+
+
+class Particle(pygame.sprite.Sprite):
+    '''Класс частицы, которая замедляется'''
+    def __init__(self, coords, dx, dy, ddx, ddy, ttl):
+        super().__init__()
+        self.image = particle_icon
+        self.rect = self.image.get_rect()
+        self.x, self.y = coords
+        self.rect.x, self.rect.y = coords
+        self.dx = dx
+        self.dy = dy
+        self.ddy = ddy
+        self.ttl = ttl
+        self.ddx = ddx
+    
+    def update(self, y_shift=False):
+        if y_shift:
+            self.y -= cell_size
+            if self.y <= 0:
+                self.kill()
+            return
+        self.ttl -= 1
+        if self.ttl <= 0:
+            self.kill()
+            return
+        self.x += self.dx
+        self.dx *= self.ddx
+        self.y += self.dy
+        self.dy *= self.ddy
+        self.rect.x = int(self.x)
+        self.rect.y = int(self.y)

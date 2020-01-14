@@ -5,9 +5,9 @@ import pygame.display
 import pygame.image as img
 import pygame.time as time
 from pygame.transform import rotate, flip # pygame для отрисовки итд
-from lines import GrassLine, RoadLine, RiverLine, TrainLine, TrapLine # Мои классы линий
+from lines import GrassLine, RoadLine, RiverLine, TrainLine, TrapLine, Particle # Мои классы линий
 from constants import * # Константы игрового поля
-from random import choice, randint
+from random import choice, randint, random
 from math import sin, pi # математика
 import sys
 from stats import add_score # изменяет файл с очками
@@ -22,7 +22,7 @@ car_hit_sound.set_volume(0.4)
 splash = pygame.mixer.Sound('sprites/sounds/splash.wav')
 splash.set_volume(0.2)
 trap_hit = pygame.mixer.Sound('sprites/sounds/trap_hit.wav')
-trap_hit.set_volume(0.2)
+trap_hit.set_volume(0.4)
 jump_sound = pygame.mixer.Sound('sprites/sounds/jump.wav')
 jump_sound.set_volume(0.05)
 # звуки и спрайты вынесены отдельно
@@ -153,6 +153,7 @@ class Field:
         ny = self.ch_coords[1] + dir_[1]
         if self.in_water():
             if not self.on_tree():
+                splash.play()
                 self.u_ded()
                 return
         self.ch_coords = nx, ny
@@ -224,6 +225,17 @@ class Field:
         font = pygame.font.Font(None, 50)
         text = font.render(str(self.ch_max_y), 1, (37, 40, 80))
         self.screen.blit(text, ((width // 2 - 1) * cell_size, 0))
+    
+    def add_particles(self, coords):
+        '''Создаёт много частиц. Вызывается после смерти'''
+        for i in range(20):
+            dx = random() * 4 - 2
+            ddx = 0.95
+            ddy = 0.99
+            ttl = (random() + 1) * fps
+            dy = random() + 1
+            particle = Particle(coords, dx, dy, ddx, ddy, ttl)
+            self.all_group.add(particle)
 
 
 class Chicken(pygame.sprite.Sprite):
@@ -264,6 +276,9 @@ class Chicken(pygame.sprite.Sprite):
     def die_lol(self, dir_=1):
         '''Убивает курицу, меняет картинку'''
         if not self.ded:
+            c = (self.rx * cell_size + cell_size // 2,
+                 (self.ry - self.field.seen_lines) * cell_size + cell_size // 2)
+            self.field.add_particles(c)
             add_score(self.field.ch_max_y, name)
             self.image = self.tomb_img
             self.flying = False
@@ -333,7 +348,11 @@ if __name__ == "__main__":
     moves = {pygame.K_w: (0, 1),
              pygame.K_s: (0, -1),
              pygame.K_a: (-1, 0),
-             pygame.K_d: (1, 0)}
+             pygame.K_d: (1, 0),
+             pygame.K_UP: (0, 1),
+             pygame.K_DOWN: (0, -1),
+             pygame.K_LEFT: (-1, 0),
+             pygame.K_RIGHT: (1, 0)}
     running = True
     chicken, field = game_pack("chicken")
     clock = time.Clock()
@@ -353,6 +372,12 @@ if __name__ == "__main__":
                         field.move_chicken(moves[event.key])
                     except:
                         field.playing = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1 and field.playing:
+                    x, y = event.pos
+                    y = (height + (field.cam_y - int(field.cam_y))) * cell_size - y
+                    x += 3 * cell_size
+                    field.add_particles((x, y))
         bar = 1000 / clock.tick(fps)
         field.frame()
         if field.playing:
