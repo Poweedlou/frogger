@@ -1,3 +1,5 @@
+'''Тут записываются все очки'''
+
 from os.path import exists
 
 
@@ -8,7 +10,7 @@ def reader(s):
 
 
 def create_file(scores=None):
-    with open('score.txt', 'w') as fo:
+    with open('score.txt', 'w', encoding='u8') as fo:
         fo.write('Winners:\n')
         if scores is not None:
             for pos, s in enumerate(scores):

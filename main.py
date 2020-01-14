@@ -1,35 +1,55 @@
 from pygame import Color, Rect
 import pygame
+pygame.mixer.init(frequency=48000, channels=6)  # надо сразу запускать из-за lines.py
 import pygame.display
 import pygame.image as img
 import pygame.time as time
-from pygame.transform import rotate, flip
-from lines import GrassLine, RoadLine, RiverLine, TrainLine, TrapLine
-from constants import *
+from pygame.transform import rotate, flip # pygame для отрисовки итд
+from lines import GrassLine, RoadLine, RiverLine, TrainLine, TrapLine # Мои классы линий
+from constants import * # Константы игрового поля
 from random import choice, randint
-from math import sin, pi
+from math import sin, pi # математика
 import sys
-from stats import add_score
-from sprites import bg_music, car_hit_sound, splash, train_hit, trap_hit, jump_sound
+from stats import add_score # изменяет файл с очками
+
+
+train_hit = pygame.mixer.Sound('sprites/sounds/train_hit.wav')
+train_hit.set_volume(0.2)
+bg_music = pygame.mixer.Sound('sprites/sounds/bg.wav')
+bg_music.set_volume(0.2)
+car_hit_sound = pygame.mixer.Sound('sprites/sounds/car_hit.wav')
+car_hit_sound.set_volume(0.4)
+splash = pygame.mixer.Sound('sprites/sounds/splash.wav')
+splash.set_volume(0.2)
+trap_hit = pygame.mixer.Sound('sprites/sounds/trap_hit.wav')
+trap_hit.set_volume(0.2)
+jump_sound = pygame.mixer.Sound('sprites/sounds/jump.wav')
+jump_sound.set_volume(0.05)
+# звуки и спрайты вынесены отдельно
 
 
 pygame.font.init()
-bg_music.set_volume(0.2)
+bg_music.set_volume(0.1)
 bg_music.play(loops=-1)
 pygame.mixer.set_reserved(1)
+# фоновая музыка
 
 
 class Field:
+    '''Класс поля'''
     def __init__(self, chicken):
         self.chicken = chicken
-        self.line_plan = (4, GrassLine)
+        self.line_plan = (5, GrassLine)
         self.ch_group = pygame.sprite.Group(chicken)
         self.ch_coords = [width // 2 + 1, 4]
+
         self.all_group = pygame.sprite.Group()
         self.cars_group = pygame.sprite.Group()
         self.trap_group = pygame.sprite.Group()
         self.tree_group = pygame.sprite.Group()
         self.train_group = pygame.sprite.Group()
+        # группы для проверки столкновений
+
         self.train_lines = []
         self.lines = []
         self.seen_lines = -height
@@ -41,11 +61,13 @@ class Field:
         x = width * cell_size
         y = height * cell_size
         self.screen = pygame.display.set_mode((x - 3 * cell_size, y))
+        # экран посредник
         self.screen2 = pygame.Surface((x, y + cell_size))
         self.screen_size = (x - 3 * cell_size, y)
         chicken.add_field(self)
 
     def frame(self, force=False):
+        '''Основной цикл событий. Двигает камеру и создаёт новые линии'''
         if self.playing or force:
             y = self.ch_coords[1]
             self.cam_y_real += 1 / fps
@@ -84,6 +106,7 @@ class Field:
             self.render()
 
     def check_ded(self):
+        '''Проверяет, жива ли курица в её текущем положении, проигрывает звуки столкновений'''
         if self.ded:
             return
         a = pygame.sprite.spritecollide(self.chicken, self.cars_group,
@@ -110,11 +133,13 @@ class Field:
             trap_hit.play()
 
     def u_ded(self, dir_=1):
+        '''Убивает курицу'''
         jump_sound.stop()
         self.chicken.die_lol(dir_)
         self.ded = True # sad moment
 
     def move_chicken(self, dir_):
+        '''Заставляет курицу прыгать, учитывает движение брёвен на реке'''
         if self.ded:
             return
         self.chicken.flying = False
@@ -136,14 +161,17 @@ class Field:
         self.chicken.hop(dir_, adir)
 
     def in_water(self):
+        '''Проверяет, находится ли курица над водой'''
         return isinstance(self.lines[self.ch_coords[1] - self.seen_lines], RiverLine)
 
     def on_tree(self):
+        '''Проверяет, стоит ли курица на бревне'''
         a = pygame.sprite.spritecollide(self.chicken, self.tree_group,
                                         False, collided=pygame.sprite.collide_mask)
         return a
 
     def gen_line(self, y):
+        '''Генерирует линии в соответствии с планом'''
         Foo = self.line_plan[1]
         if self.line_plan[0] == 1:
             ch = set((GrassLine, RoadLine, RiverLine, TrainLine, TrapLine))
@@ -172,6 +200,7 @@ class Field:
             return Foo(y, self)
 
     def render(self):
+        '''Отрисовывает всё на экране'''
         shift = int(self.cam_y)
         lines = map(lambda x: x.render(), self.lines)
         lines = map(lambda x: (x[0], (0, (x[1] - shift) * cell_size)), lines)
@@ -185,17 +214,20 @@ class Field:
         self.print_score()
 
     def print_fps(self, fps):
+        '''Печатает реальный фпс'''
         font = pygame.font.Font(None, 50)
         text = font.render(str(int(fps)), 1, (37, 40, 80))
         self.screen.blit(text, ((width - 4) * cell_size, 0))
 
     def print_score(self):
+        '''Печатает кол-во очков'''
         font = pygame.font.Font(None, 50)
         text = font.render(str(self.ch_max_y), 1, (37, 40, 80))
         self.screen.blit(text, ((width // 2 - 1) * cell_size, 0))
 
 
 class Chicken(pygame.sprite.Sprite):
+    '''Главный герой игры'''
     def __init__(self, pic_path):
         super().__init__()
         self.ded = 0
@@ -211,6 +243,7 @@ class Chicken(pygame.sprite.Sprite):
         self.flying_frames = 0
 
     def fly_frame(self):
+        '''Обновляет положение во время прыжка'''
         if not self.flying:
             return
         if self.flying_frames == fps // 4 - 1:
@@ -224,10 +257,12 @@ class Chicken(pygame.sprite.Sprite):
         self.flying_frames += 1
 
     def add_field(self, field):
+        '''Привязывает поле к курице'''
         self.field = field
         self.rx, self.ry = self.field.ch_coords
 
     def die_lol(self, dir_=1):
+        '''Убивает курицу, меняет картинку'''
         if not self.ded:
             add_score(self.field.ch_max_y, name)
             self.image = self.tomb_img
@@ -235,6 +270,7 @@ class Chicken(pygame.sprite.Sprite):
             self.ded = dir_
 
     def calc(self):
+        '''Рассчитывает положение курицы'''
         if self.ded:
             if self.dedtime == 0:
                 self.ded_pos_y = self.ry
@@ -257,10 +293,12 @@ class Chicken(pygame.sprite.Sprite):
             self.rect.y = int(cell_size * (self.ry - self.field.seen_lines))
 
     def turn(self, angle):
+        '''Поворачивает курицу'''
         self.image = rotate(self.image, angle - self.angle)
         self.angle = angle
 
     def hop(self, dir_, angle_dir):
+        '''Заставляет курицу прыгать'''
         jump_sound.play()
         self.flying = True
         self.flying_frames = 0
@@ -283,6 +321,7 @@ class Chicken(pygame.sprite.Sprite):
 
 
 def game_pack(ch_name):
+    '''Создаёт курицу и поле'''
     chicken = Chicken(ch_name)
     field = Field(chicken)
     field.frame(True)
@@ -298,6 +337,7 @@ if __name__ == "__main__":
     running = True
     chicken, field = game_pack("chicken")
     clock = time.Clock()
+    '''Главный цикл программы'''
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:

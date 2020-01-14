@@ -1,17 +1,29 @@
 import pygame
-from random import choice, randint
+from random import choice, randint # рандом для рсстановки всгшо разного
 from constants import *
-from sprites import (grass_block, road_block, river_block, railway_block,
-                     cars, tree, semafor, traps, head_img, mid_img, horn)
 
+horn = pygame.mixer.Sound('sprites/sounds/horn.wav')
+horn.set_volume(0.1)
+cars = [pygame.image.load(f'sprites/sprites/car{i}.png') for i in range(1, 8)]
+traps = [pygame.image.load(f'sprites/sprites/trap{i}.png') for i in range(1, 4)]
+tree = pygame.image.load('sprites/sprites/tree.png')
+head_img = pygame.image.load('sprites\\sprites\\head_vagon.png')
+mid_img = pygame.image.load('sprites\\sprites\\mid_vagon.png')
+semafor = pygame.image.load('sprites/lines/semafor.png')
+#====================
+grass_block = pygame.image.load('sprites/lines/grass_block.png')
+road_block = pygame.image.load('sprites/lines/road_block.png')
+river_block = pygame.image.load('sprites/lines/river_block.png')
+railway_block = pygame.image.load('sprites/lines/railway_block.png')
+# все спрайтвы вынесены отдельно
 
 class Line:
+    '''Базовый класс линии'''
     def __init__(self, y, field):
         self.y = y
         self.field = field
         size = (width * cell_size, cell_size)
         self.screen = pygame.Surface(size)
-        self.screen.fill(pygame.Color('white'))
     
     def render(self):
         return self.screen, self.y
@@ -21,6 +33,7 @@ class Line:
 
 
 class GrassLine(Line):
+    '''Линия с травой (без препятствий)'''
     def __init__(self, *args):
         super().__init__(*args)
         for x in range(width):
@@ -28,7 +41,9 @@ class GrassLine(Line):
 
 
 class RoadLine(Line):
+    '''Линия с машинами, которые могут переехать игрока'''
     def __init__(self, *args, dx=1):
+        '''Закрашивает фон и расставляем машины'''
         super().__init__(*args)
         for x in range(width):
             self.screen.blit(road_block, (cell_size * x, 0))
@@ -38,12 +53,14 @@ class RoadLine(Line):
             self.add_car(x)
 
     def add_car(self, x):
+        '''Добавляет машину на указанную позицию'''
         g1 = self.field.cars_group
         g2 = self.field.all_group
         car = Car(self.y - self.field.seen_lines + 1, x, self.dx)
         car.add(g1, g2)
 
 class Car(pygame.sprite.Sprite):
+    '''Класс машины'''
     def __init__(self, y, x, dx):
         super().__init__()
         num = randint(0, 6)
@@ -58,6 +75,7 @@ class Car(pygame.sprite.Sprite):
         self.x = x * cell_size
         
     def update(self, y_shift=False):
+        '''Сдвигает машину и заставляет её ехать'''
         if y_shift:
             self.y -= 1
             if self.y < 0:
@@ -76,6 +94,7 @@ class Car(pygame.sprite.Sprite):
 
 
 class RiverLine(Line):
+    '''Река, которую надо перепрыгивать по брёвнам'''
     def __init__(self, *args, dx=1):
         super().__init__(*args)
         self.dx = dx
@@ -86,6 +105,7 @@ class RiverLine(Line):
             self.add_tree(x)
     
     def add_tree(self, x):
+        '''Добавляет бревно'''
         g1 = self.field.tree_group
         g2 = self.field.all_group
         tree = Tree(self.y - self.field.seen_lines + 1, x, self.dx)
@@ -93,6 +113,7 @@ class RiverLine(Line):
 
 
 class Tree(pygame.sprite.Sprite):
+    '''Класс бревна'''
     def __init__(self, y, x, dx):
         super().__init__()
         self.image = tree
@@ -103,6 +124,7 @@ class Tree(pygame.sprite.Sprite):
         self.x = x * cell_size
 
     def update(self, y_shift=False):
+        '''Двигает бревно по реке'''
         if y_shift:
             self.y -= 1
             if self.y < 0:
@@ -119,6 +141,7 @@ class Tree(pygame.sprite.Sprite):
 
 
 class TrainLine(Line):
+    '''Ж/д путь. Иногда по нему проезжают поезда'''
     def __init__(self, *args, dx=10):
         super().__init__(*args)
         for x in range(width):
@@ -129,12 +152,14 @@ class TrainLine(Line):
         self.draw_semafor('green')
 
     def draw_semafor(self, color):
+        '''Отрисовывает семафор. Он оповещает о приближении поезда'''
         self.screen.blit(semafor, (3 * cell_size, 0))
         pygame.draw.circle(self.screen, pygame.Color(color),
                            (3 * cell_size + 10, 31),
                            cell_size // 8)
 
     def frame(self):
+        '''Cоздаёт расписание поездов'''
         if not self.train_exists:
             self.ttl -= 1
             if self.ttl < fps and not self.ttl % (fps // 5):
@@ -149,6 +174,7 @@ class TrainLine(Line):
                 self.ttl = choice(range(2, 5)) * fps
 
     def add_train(self):
+        '''Создаёт поезд'''
         g1 = self.field.train_group
         g2 = self.field.all_group
         train = Train(self.dx, self.y - self.field.seen_lines + 1, self)
@@ -160,6 +186,7 @@ class TrainLine(Line):
 
 
 class Vagon(pygame.sprite.Sprite):
+    '''Класс отдельного вагона. Именно он отрисовывается на экране'''
     def __init__(self, dx, img, x, y):
         super().__init__()
         self.line = None
@@ -172,6 +199,7 @@ class Vagon(pygame.sprite.Sprite):
         self.x = x * cell_size
 
     def update(self, y_shift=False):
+        '''Сдвигает вагон и сигналит о том, что поезд закончился'''
         if y_shift:
             self.y -= 1
             if self.y < 0:
@@ -195,6 +223,7 @@ class Vagon(pygame.sprite.Sprite):
 
 
 class Train:
+    '''Класс, который создаёт вагоны, помещает их куда надо'''
     def __init__(self, dx, y, line):
         self.line = line
         self.dx = dx
@@ -214,7 +243,9 @@ class Train:
 
 
 class TrapLine(Line):
+    '''Линия со смертельными капканами'''
     def __init__(self, *args):
+        '''РАсставляет капканы'''
         super().__init__(*args)
         for x in range(width):
             self.screen.blit(grass_block, (cell_size * x, 0))
@@ -227,6 +258,7 @@ class TrapLine(Line):
 
 
 class Trap(pygame.sprite.Sprite):
+    '''Класс капкана'''
     def __init__(self, x, y):
         super().__init__()
         self.image = traps[0]
@@ -235,8 +267,9 @@ class Trap(pygame.sprite.Sprite):
         self.rect.y = y * cell_size
         self.rect.x = x * cell_size
         self.caught = -1
-    
+
     def update(self, y_shift=False):
+        '''Сдвигает капкан. Также отвечает за анимацию'''
         if y_shift:
             self.rect.y -= cell_size
             if self.rect.y < 0:
@@ -246,8 +279,8 @@ class Trap(pygame.sprite.Sprite):
         elif not self.caught:
             self.caught = -1
             self.image = traps[2]
-        
-    
+ 
     def catch(self):
+        '''Начинает анимацию схлапывания'''
         self.caught = fps // 10
         self.image = traps[1]
