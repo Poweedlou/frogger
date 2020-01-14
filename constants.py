@@ -1,7 +1,7 @@
 
 width = 17
 height = 13
-fps = 80
+fps = 60
 
 
 ####### UNTOUCHABLE #######

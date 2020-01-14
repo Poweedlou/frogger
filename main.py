@@ -9,11 +9,11 @@ from constants import *
 from random import choice, randint
 from math import sin, pi
 import sys
+from stats import add_score
+from sprites import bg_music, car_hit_sound, splash, train_hit, trap_hit, jump_sound
 
 
 pygame.font.init()
-pygame.mixer.init(frequency=48000, channels=6)
-bg_music = pygame.mixer.Sound('sprites/sounds/bg.wav')
 bg_music.set_volume(0.2)
 bg_music.play(loops=-1)
 pygame.mixer.set_reserved(1)
@@ -78,6 +78,9 @@ class Field:
             self.chicken.calc()
             self.all_group.update()
             self.check_ded()
+            y = int(self.ch_coords[1])
+            if y > self.ch_max_y:
+                self.ch_max_y = y
             self.render()
 
     def check_ded(self):
@@ -86,36 +89,28 @@ class Field:
         a = pygame.sprite.spritecollide(self.chicken, self.cars_group,
                                         False, collided=pygame.sprite.collide_mask)
         if a:
-            s = pygame.mixer.Sound('sprites/sounds/car_hit.wav')
-            s.set_volume(0.2)
-            s.play()
             self.u_ded(a[0].dx)
+            car_hit_sound.play()
         if self.in_water():
             if not self.on_tree() and not self.chicken.flying:
-                s = pygame.mixer.Sound('sprites/sounds/splash.wav')
-                s.set_volume(0.2)
-                s.play()
                 self.u_ded()
+                splash.play()
         if not (2.1 < self.chicken.rect.x / cell_size < width - 0.1):
             self.u_ded()
         a = pygame.sprite.spritecollide(self.chicken, self.train_group,
                                         False, collided=pygame.sprite.collide_mask)
         if a:
-            s = pygame.mixer.Sound('sprites/sounds/train_hit.wav')
-            s.set_volume(0.4)
-            s.play()
+            train_hit.play()
             self.u_ded(a[0].dx / 2)
         a = pygame.sprite.spritecollide(self.chicken, self.trap_group,
                                         False, collided=pygame.sprite.collide_mask)
         if a:
-            if not self.ded:
-                a[0].catch()
-            s = pygame.mixer.Sound('sprites/sounds/trap_hit.wav')
-            s.set_volume(0.2)
-            s.play()
             self.u_ded()
+            a[0].catch()
+            trap_hit.play()
 
     def u_ded(self, dir_=1):
+        jump_sound.stop()
         self.chicken.die_lol(dir_)
         self.ded = True # sad moment
 
@@ -187,11 +182,17 @@ class Field:
         y_blit = cell_size * (1 - self.cam_y + shift)
         blit_area = Rect((3 * cell_size, int(y_blit)), self.screen_size)
         self.screen.blit(foo, (0, 0), area=blit_area)
-    
+        self.print_score()
+
     def print_fps(self, fps):
         font = pygame.font.Font(None, 50)
         text = font.render(str(int(fps)), 1, (37, 40, 80))
         self.screen.blit(text, ((width - 4) * cell_size, 0))
+
+    def print_score(self):
+        font = pygame.font.Font(None, 50)
+        text = font.render(str(self.ch_max_y), 1, (37, 40, 80))
+        self.screen.blit(text, ((width // 2 - 1) * cell_size, 0))
 
 
 class Chicken(pygame.sprite.Sprite):
@@ -228,6 +229,7 @@ class Chicken(pygame.sprite.Sprite):
 
     def die_lol(self, dir_=1):
         if not self.ded:
+            add_score(self.field.ch_max_y, name)
             self.image = self.tomb_img
             self.flying = False
             self.ded = dir_
@@ -259,9 +261,7 @@ class Chicken(pygame.sprite.Sprite):
         self.angle = angle
 
     def hop(self, dir_, angle_dir):
-        s = pygame.mixer.Sound('sprites/sounds/jump.wav')
-        s.set_volume(0.05)
-        s.play()
+        jump_sound.play()
         self.flying = True
         self.flying_frames = 0
         self.vx, self.vy = self.rx, self.ry
@@ -290,6 +290,7 @@ def game_pack(ch_name):
 
 
 if __name__ == "__main__":
+    name = input('Введите имя\n')
     moves = {pygame.K_w: (0, 1),
              pygame.K_s: (0, -1),
              pygame.K_a: (-1, 0),
