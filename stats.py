@@ -21,7 +21,7 @@ def create_file(scores=None):
 def read_score():
     if not exists('score.txt'):
         create_file()
-    with open('score.txt', 'r') as fi:
+    with open('score.txt', 'r', encoding='u8') as fi:
         data = fi.readlines()[1:]
     s = map(reader, filter(bool, map(lambda x: x.strip('\n'), data)))
     return list(s)
