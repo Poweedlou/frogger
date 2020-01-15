@@ -11,7 +11,7 @@ def reader(s):
 
 def create_file(scores=None):
     with open('score.txt', 'w', encoding='u8') as fo:
-        fo.write('Winners:\n')
+        fo.write('Leaderboard:\n')
         if scores is not None:
             for pos, s in enumerate(scores):
                 s, n = s

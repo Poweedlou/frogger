@@ -1,22 +1,27 @@
 import pygame
-from random import choice, randint # рандом для рсстановки всгшо разного
+from random import choice, randint  # рандом для расстановки всего разного
 from constants import *
+from pygame.image import load
+
+
+pygame.mixer.init(frequency=48000, channels=6)
 
 horn = pygame.mixer.Sound('sprites/sounds/horn.wav')
 horn.set_volume(0.1)
-cars = [pygame.image.load(f'sprites/sprites/car{i}.png') for i in range(1, 8)]
-traps = [pygame.image.load(f'sprites/sprites/trap{i}.png') for i in range(1, 4)]
-tree = pygame.image.load('sprites/sprites/tree.png')
-head_img = pygame.image.load('sprites\\sprites\\head_vagon.png')
-mid_img = pygame.image.load('sprites\\sprites\\mid_vagon.png')
-semafor = pygame.image.load('sprites/lines/semafor.png')
-particle_icon = pygame.image.load('sprites/ded_particle.png')
-#====================
-grass_block = pygame.image.load('sprites/lines/grass_block.png')
-road_block = pygame.image.load('sprites/lines/road_block.png')
-river_block = pygame.image.load('sprites/lines/river_block.png')
-railway_block = pygame.image.load('sprites/lines/railway_block.png')
+cars = [load(f'sprites/sprites/car{i}.png') for i in range(1, 8)]
+traps = [load(f'sprites/sprites/trap{i}.png') for i in range(1, 4)]
+tree = load('sprites/sprites/tree.png')
+head_img = load('sprites\\sprites\\head_vagon.png')
+mid_img = load('sprites\\sprites\\mid_vagon.png')
+semafor = load('sprites/lines/semafor.png')
+particle_icon = load('sprites/ded_particle.png')
+# ====================
+grass_block = load('sprites/lines/grass_block.png')
+road_block = load('sprites/lines/road_block.png')
+river_block = load('sprites/lines/river_block.png')
+railway_block = load('sprites/lines/railway_block.png')
 # все спрайтвы вынесены отдельно
+
 
 class Line:
     '''Базовый класс линии'''
@@ -25,7 +30,7 @@ class Line:
         self.field = field
         size = (width * cell_size, cell_size)
         self.screen = pygame.Surface(size)
-    
+
     def render(self):
         return self.screen, self.y
 
@@ -60,6 +65,7 @@ class RoadLine(Line):
         car = Car(self.y - self.field.seen_lines + 1, x, self.dx)
         car.add(g1, g2)
 
+
 class Car(pygame.sprite.Sprite):
     '''Класс машины'''
     def __init__(self, y, x, dx):
@@ -74,7 +80,7 @@ class Car(pygame.sprite.Sprite):
         self.dy = choice((-1, 1))
         self.dx = dx
         self.x = x * cell_size
-        
+
     def update(self, y_shift=False):
         '''Сдвигает машину и заставляет её ехать'''
         if y_shift:
@@ -104,7 +110,7 @@ class RiverLine(Line):
         for i in range(width // 5):
             x = choice(range(2)) + i * 5
             self.add_tree(x)
-    
+
     def add_tree(self, x):
         '''Добавляет бревно'''
         g1 = self.field.tree_group
@@ -235,7 +241,8 @@ class Train:
         p1 = Vagon(dx, head_img, x_cs[0], y)
         p2 = Vagon(dx, mid_img, x_cs[1], y)
         p3 = Vagon(dx, mid_img, x_cs[2], y)
-        p4 = Vagon(dx, pygame.transform.flip(head_img, True, False), x_cs[3], y)
+        p4 = Vagon(dx,
+                   pygame.transform.flip(head_img, True, False), x_cs[3], y)
         if dx < 0:
             p4.line = line
         else:
@@ -280,7 +287,7 @@ class Trap(pygame.sprite.Sprite):
         elif not self.caught:
             self.caught = -1
             self.image = traps[2]
- 
+
     def catch(self):
         '''Начинает анимацию схлапывания'''
         self.caught = fps // 10
@@ -300,7 +307,7 @@ class Particle(pygame.sprite.Sprite):
         self.ddy = ddy
         self.ttl = ttl
         self.ddx = ddx
-    
+
     def update(self, y_shift=False):
         if y_shift:
             self.y -= cell_size

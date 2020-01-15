@@ -1,16 +1,16 @@
 from pygame import Color, Rect
 import pygame
-pygame.mixer.init(frequency=48000, channels=6)  # надо сразу запускать из-за lines.py
 import pygame.display
 import pygame.image as img
 import pygame.time as time
-from pygame.transform import rotate, flip # pygame для отрисовки итд
-from lines import GrassLine, RoadLine, RiverLine, TrainLine, TrapLine, Particle # Мои классы линий
-from constants import * # Константы игрового поля
+from pygame.transform import rotate, flip  # pygame для отрисовки итд
+from lines import (GrassLine, RoadLine, RiverLine,
+                   TrainLine, TrapLine, Particle)  # Мои классы линий
+from constants import *  # Константы игрового поля
 from random import choice, randint, random
-from math import sin, pi # математика
+from math import sin, pi  # математика
 import sys
-from stats import add_score # изменяет файл с очками
+from stats import add_score  # изменяет файл с очками
 
 
 train_hit = pygame.mixer.Sound('sprites/sounds/train_hit.wav')
@@ -106,11 +106,13 @@ class Field:
             self.render()
 
     def check_ded(self):
-        '''Проверяет, жива ли курица в её текущем положении, проигрывает звуки столкновений'''
+        '''Проверяет, жива ли курица в её текущем положении,
+        проигрывает звуки столкновений'''
         if self.ded:
             return
         a = pygame.sprite.spritecollide(self.chicken, self.cars_group,
-                                        False, collided=pygame.sprite.collide_mask)
+                                        False,
+                                        collided=pygame.sprite.collide_mask)
         if a:
             self.u_ded(a[0].dx)
             car_hit_sound.play()
@@ -121,12 +123,14 @@ class Field:
         if not (2.1 < self.chicken.rect.x / cell_size < width - 0.1):
             self.u_ded()
         a = pygame.sprite.spritecollide(self.chicken, self.train_group,
-                                        False, collided=pygame.sprite.collide_mask)
+                                        False,
+                                        collided=pygame.sprite.collide_mask)
         if a:
             train_hit.play()
             self.u_ded(a[0].dx / 2)
         a = pygame.sprite.spritecollide(self.chicken, self.trap_group,
-                                        False, collided=pygame.sprite.collide_mask)
+                                        False,
+                                        collided=pygame.sprite.collide_mask)
         if a:
             self.u_ded()
             a[0].catch()
@@ -136,7 +140,7 @@ class Field:
         '''Убивает курицу'''
         jump_sound.stop()
         self.chicken.die_lol(dir_)
-        self.ded = True # sad moment
+        self.ded = True  # sad moment
 
     def move_chicken(self, dir_):
         '''Заставляет курицу прыгать, учитывает движение брёвен на реке'''
@@ -163,12 +167,14 @@ class Field:
 
     def in_water(self):
         '''Проверяет, находится ли курица над водой'''
-        return isinstance(self.lines[self.ch_coords[1] - self.seen_lines], RiverLine)
+        return isinstance(self.lines[self.ch_coords[1] - self.seen_lines],
+                          RiverLine)
 
     def on_tree(self):
         '''Проверяет, стоит ли курица на бревне'''
         a = pygame.sprite.spritecollide(self.chicken, self.tree_group,
-                                        False, collided=pygame.sprite.collide_mask)
+                                        False,
+                                        collided=pygame.sprite.collide_mask)
         return a
 
     def gen_line(self, y):
@@ -180,6 +186,8 @@ class Field:
             Bar = choice(list(ch))
             if Bar in (TrainLine, TrapLine):
                 len_ = 1
+            elif Bar == GrassLine:
+                len_ = randint(1, 2)
             else:
                 len_ = randint(2, 3)
             self.line_plan = len_, Bar
@@ -225,7 +233,7 @@ class Field:
         font = pygame.font.Font(None, 50)
         text = font.render(str(self.ch_max_y), 1, (37, 40, 80))
         self.screen.blit(text, ((width // 2 - 1) * cell_size, 0))
-    
+
     def add_particles(self, coords):
         '''Создаёт много частиц. Вызывается после смерти'''
         for i in range(20):
@@ -247,7 +255,7 @@ class Chicken(pygame.sprite.Sprite):
         self.sit_img = img.load('sprites/chicken/' + pic_path + '_sit.png')
         self.image = self.sit_img
         self.fly_img = img.load('sprites/chicken/' + pic_path + '_fly.png')
-        self.tomb_img = img.load('sprites/tomb.png')
+        self.tomb_img = img.load('sprites/chicken/tomb.png')
         self.rect = self.image.get_rect()
         self.mask = pygame.mask.from_surface(self.image)
         self.angle = 0
@@ -277,7 +285,8 @@ class Chicken(pygame.sprite.Sprite):
         '''Убивает курицу, меняет картинку'''
         if not self.ded:
             c = (self.rx * cell_size + cell_size // 2,
-                 (self.ry - self.field.seen_lines) * cell_size + cell_size // 2)
+                 (self.ry - self.field.seen_lines) *
+                 cell_size + cell_size // 2)
             self.field.add_particles(c)
             add_score(self.field.ch_max_y, name)
             self.image = self.tomb_img
@@ -294,7 +303,8 @@ class Chicken(pygame.sprite.Sprite):
             if self.dedtime < fps / 2:
                 self.dedtime += 1
                 self.vx += self.ded * 1.5 / cell_size
-                self.vy = self.ded_pos_y + sin(self.dedtime * pi * 2 / fps) / 1.5
+                self.vy = self.ded_pos_y + sin(self.dedtime *
+                                               pi * 2 / fps) / 1.5
             self.rect.x = int(self.vx * cell_size)
             self.rect.y = int(cell_size * (self.vy - self.field.seen_lines))
             return
@@ -375,7 +385,8 @@ if __name__ == "__main__":
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1 and field.playing:
                     x, y = event.pos
-                    y = (height + (field.cam_y - int(field.cam_y))) * cell_size - y
+                    y = (height + (field.cam_y -
+                                   int(field.cam_y))) * cell_size - y
                     x += 3 * cell_size
                     field.add_particles((x, y))
         bar = 1000 / clock.tick(fps)
