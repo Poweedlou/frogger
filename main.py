@@ -353,6 +353,16 @@ def game_pack(ch_name):
     return chicken, field
 
 
+def draw_FROGGER(field):
+    '''Рисует надпись frogger на экране'''
+    w, h = field.screen_size
+    x = w // 4
+    y = h // 4
+    font = pygame.font.SysFont('comicsansms', 100, True)
+    text = font.render('Frogger', 1, (255, 0, 200))
+    field.screen.blit(text, (x, y))
+
+
 if __name__ == "__main__":
     name = input('Введите имя\n')
     moves = {pygame.K_w: (0, 1),
@@ -366,6 +376,7 @@ if __name__ == "__main__":
     running = True
     chicken, field = game_pack("chicken")
     clock = time.Clock()
+    draw_FROGGER(field)
     '''Главный цикл программы'''
     while running:
         for event in pygame.event.get():
